@@ -75,19 +75,29 @@ export default function App() {
   const handleUpdateStatus = async (bookingId, paymentStatus, paymentMethod) => {
     setUpdatingId(bookingId);
     try {
+      const b = bookings.find(item => item.bookingId === bookingId) || selectedBooking;
       await updateBookingStatus({
         token: idToken,
         email: adminUser.email,
         bookingId,
+        rowIndex: b?.rowIndex,
+        name: b?.name,
         paymentStatus,
         paymentMethod,
       });
 
-      // Refresh data
-      await loadAdminData();
-      if (selectedBooking && selectedBooking.bookingId === bookingId) {
-        setSelectedBooking((prev) => ({ ...prev, paymentStatus: 'PAID', paymentMethod }));
+      setBookings(prev => prev.map(item => {
+        if (item.bookingId === bookingId || (b?.rowIndex && item.rowIndex === b.rowIndex)) {
+          return { ...item, paymentStatus: 'PAID', paymentMethod };
+        }
+        return item;
+      }));
+
+      if (selectedBooking) {
+        setSelectedBooking(prev => ({ ...prev, paymentStatus: 'PAID', paymentMethod }));
       }
+
+      await loadAdminData();
     } catch (err) {
       alert(`Status update failed: ${err.message}`);
     } finally {

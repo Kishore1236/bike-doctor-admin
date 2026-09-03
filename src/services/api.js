@@ -2,6 +2,33 @@ const PRIMARY_API = import.meta.env.VITE_API_URL || 'https://bike-doctor-service
 const LOCAL_API = 'http://localhost:5000';
 const GOOGLE_SHEET_ID = '1ct2jXUykSUX2XpU3vFVTZmDXZTHCliqV89ea92o5wFM';
 
+function getAdminStatusOverrides() {
+  try {
+    const raw = localStorage.getItem('admin_status_overrides');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveAdminStatusOverride(bookingId, rowIndex, name, paymentStatus, paymentMethod) {
+  try {
+    const current = getAdminStatusOverrides();
+    const payload = { paymentStatus, paymentMethod, updatedAt: Date.now() };
+    if (bookingId) {
+      current[bookingId] = payload;
+      current[String(bookingId).toLowerCase()] = payload;
+    }
+    if (rowIndex) {
+      current[`row_${rowIndex}`] = payload;
+    }
+    if (name) {
+      current[`name_${String(name).toLowerCase()}`] = payload;
+    }
+    localStorage.setItem('admin_status_overrides', JSON.stringify(current));
+  } catch (e) {}
+}
+
 async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMethod, plan, sort, page, limit }) {
   const gvizUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:json`;
   const gvizRes = await fetch(gvizUrl);
@@ -24,6 +51,8 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
   let todayBookingsCount = 0;
   let totalRevenue = 0;
 
+  const overrides = getAdminStatusOverrides();
+
   rows.forEach((row, index) => {
     const cells = row.c || [];
     const getVal = (idx) => (cells[idx] && cells[idx].v !== null && cells[idx].v !== undefined) ? String(cells[idx].v).trim() : '';
@@ -42,6 +71,7 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
       } catch (e) {}
     }
 
+    const rowIndex = index + 2;
     const name = getVal(1) || 'Customer';
     const pickupType = getVal(2) || 'home';
     const rawLocation = getVal(3);
@@ -56,8 +86,20 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
     const bookingId = getVal(11) || `BK_${index + 1}`;
     const rawMethod = getVal(12) || 'Pay at Service';
     const rawStatus = getVal(13);
-    const paymentStatus = (rawStatus.toUpperCase() === 'PAID' || rawStatus.toUpperCase() === 'PAID ONLINE') ? 'PAID' : 'Pending';
     const email = getVal(14) || 'Not provided';
+
+    const override = overrides[bookingId] || overrides[String(bookingId).toLowerCase()] || overrides[`row_${rowIndex}`] || overrides[`name_${String(name).toLowerCase()}`];
+
+    let finalStatus = (rawStatus.toUpperCase() === 'PAID' || rawStatus.toUpperCase() === 'PAID ONLINE') ? 'PAID' : 'Pending';
+    let finalMethod = rawMethod;
+
+    if (override) {
+      finalStatus = override.paymentStatus || finalStatus;
+      finalMethod = override.paymentMethod || finalMethod;
+    }
+
+    const calculatedPaymentStatus = finalStatus;
+    const calculatedPaymentMethod = finalMethod;
 
     // Extract exact numerical price from planName (e.g., "Premium Care - ₹299" -> 299)
     let numAmount = 299;
@@ -76,14 +118,14 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
 
     const formattedAmount = `₹${numAmount}`;
 
-    if (paymentStatus === 'PAID') {
+    if (calculatedPaymentStatus === 'PAID') {
       paidCount++;
       totalRevenue += numAmount;
     } else {
       pendingCount++;
     }
 
-    if (rawMethod.toLowerCase().includes('service')) {
+    if (calculatedPaymentMethod.toLowerCase().includes('service')) {
       payAtServiceCount++;
     } else {
       onlinePaymentCount++;
@@ -116,9 +158,9 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
       amount: formattedAmount,
       totalAmount: formattedAmount,
       numAmount,
-      paymentMethod: rawMethod,
-      paymentStatus,
-      bookingStatus: paymentStatus === 'PAID' ? 'CONFIRMED' : 'PENDING_APPROVAL',
+      paymentMethod: calculatedPaymentMethod,
+      paymentStatus: calculatedPaymentStatus,
+      bookingStatus: calculatedPaymentStatus === 'PAID' ? 'CONFIRMED' : 'PENDING_APPROVAL',
       timestamp: formattedTimestamp || rawTimestamp,
       createdAt: formattedTimestamp || rawTimestamp,
     });
@@ -232,7 +274,12 @@ export async function fetchAdminBookings(params) {
   return await fetchFromGoogleSheetsDirect(params);
 }
 
-export async function updateBookingStatus({ token, email, bookingId, paymentStatus, paymentMethod }) {
+export async function updateBookingStatus({ token, email, bookingId, rowIndex, name, paymentStatus, paymentMethod }) {
+  const newStatus = paymentStatus ? String(paymentStatus).toUpperCase() : 'PAID';
+  const newMethod = paymentMethod || 'Pay Online (Admin Verified)';
+
+  saveAdminStatusOverride(bookingId, rowIndex, name, newStatus, newMethod);
+
   const headers = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
