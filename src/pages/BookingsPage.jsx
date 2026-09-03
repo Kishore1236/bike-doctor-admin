@@ -133,7 +133,17 @@ export function BookingsPage({
                           <Eye size={14} />
                         </button>
 
-                        {!isPaid && (
+                        {isPaid ? (
+                          <button
+                            className="btn-secondary"
+                            style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#f59e0b', borderColor: '#f59e0b' }}
+                            onClick={() => onUpdateStatus(b.bookingId, 'Pending', 'Pay at Service')}
+                            disabled={isUpdating}
+                            title="Revert status to UNPAID if marked PAID mistakenly"
+                          >
+                            {isUpdating ? 'Updating...' : 'Mark UNPAID'}
+                          </button>
+                        ) : (
                           <button
                             className="btn-primary"
                             style={{ padding: '4px 8px', fontSize: '0.75rem' }}

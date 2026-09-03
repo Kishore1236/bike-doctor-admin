@@ -116,17 +116,29 @@ export function BookingDetailsModal({ booking, onClose, onUpdateStatus, updating
             </div>
           </div>
 
-          {/* Actions */}
-          {!isPaid && onUpdateStatus && (
+          {onUpdateStatus && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-              <button
-                className="btn-primary"
-                onClick={() => onUpdateStatus(booking.bookingId, 'PAID', 'Pay Online (Admin Verified)')}
-                disabled={updating}
-              >
-                <CheckCircle size={16} />
-                {updating ? 'Updating Status...' : 'Mark as PAID'}
-              </button>
+              {isPaid ? (
+                <button
+                  className="btn-secondary"
+                  style={{ color: '#f59e0b', borderColor: '#f59e0b' }}
+                  onClick={() => onUpdateStatus(booking.bookingId, 'Pending', 'Pay at Service')}
+                  disabled={updating}
+                  title="Revert status to UNPAID if marked PAID mistakenly"
+                >
+                  <Clock size={16} />
+                  {updating ? 'Updating Status...' : 'Mark as UNPAID'}
+                </button>
+              ) : (
+                <button
+                  className="btn-primary"
+                  onClick={() => onUpdateStatus(booking.bookingId, 'PAID', 'Pay Online (Admin Verified)')}
+                  disabled={updating}
+                >
+                  <CheckCircle size={16} />
+                  {updating ? 'Updating Status...' : 'Mark as PAID'}
+                </button>
+              )}
             </div>
           )}
         </div>

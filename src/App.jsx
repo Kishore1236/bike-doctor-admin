@@ -86,15 +86,18 @@ export default function App() {
         paymentMethod,
       });
 
+      const newStatus = paymentStatus ? (String(paymentStatus).toUpperCase() === 'PAID' ? 'PAID' : 'Pending') : 'PAID';
+      const newMethod = paymentMethod || (newStatus === 'PAID' ? 'Pay Online (Admin Verified)' : 'Pay at Service');
+
       setBookings(prev => prev.map(item => {
         if (item.bookingId === bookingId || (b?.rowIndex && item.rowIndex === b.rowIndex)) {
-          return { ...item, paymentStatus: 'PAID', paymentMethod };
+          return { ...item, paymentStatus: newStatus, paymentMethod: newMethod };
         }
         return item;
       }));
 
       if (selectedBooking) {
-        setSelectedBooking(prev => ({ ...prev, paymentStatus: 'PAID', paymentMethod }));
+        setSelectedBooking(prev => ({ ...prev, paymentStatus: newStatus, paymentMethod: newMethod }));
       }
 
       await loadAdminData();

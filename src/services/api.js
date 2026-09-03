@@ -184,7 +184,7 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
     }
 
     if (filterStatus && filterStatus !== 'ALL') {
-      if (item.paymentStatus !== filterStatus) return false;
+      if (item.paymentStatus.toUpperCase() !== filterStatus) return false;
     }
 
     if (filterMethod && filterMethod !== 'all') {
@@ -275,8 +275,8 @@ export async function fetchAdminBookings(params) {
 }
 
 export async function updateBookingStatus({ token, email, bookingId, rowIndex, name, paymentStatus, paymentMethod }) {
-  const newStatus = paymentStatus ? String(paymentStatus).toUpperCase() : 'PAID';
-  const newMethod = paymentMethod || 'Pay Online (Admin Verified)';
+  const newStatus = paymentStatus ? (String(paymentStatus).toUpperCase() === 'PAID' ? 'PAID' : 'Pending') : 'PAID';
+  const newMethod = paymentMethod || (newStatus === 'PAID' ? 'Pay Online (Admin Verified)' : 'Pay at Service');
 
   saveAdminStatusOverride(bookingId, rowIndex, name, newStatus, newMethod);
 
@@ -312,10 +312,10 @@ export async function updateBookingStatus({ token, email, bookingId, rowIndex, n
 
   const payload = {
     bookingId,
-    paymentStatus: paymentStatus ? String(paymentStatus).toUpperCase() : 'PAID',
-    'Payment Status': paymentStatus ? String(paymentStatus).toUpperCase() : 'PAID',
-    paymentMethod: paymentMethod || 'Pay Online (Admin Updated)',
-    'Payment Method': paymentMethod || 'Pay Online (Admin Updated)',
+    paymentStatus: newStatus,
+    'Payment Status': newStatus,
+    paymentMethod: newMethod,
+    'Payment Method': newMethod,
     action: 'UPDATE_STATUS',
   };
 

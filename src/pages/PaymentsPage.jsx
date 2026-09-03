@@ -107,9 +107,20 @@ export function PaymentsPage({ bookings, stats, onUpdateStatus, updatingId }) {
                             {isUpdating ? 'Updating...' : 'Mark Collected & PAID'}
                           </button>
                         ) : (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 600 }}>
-                            Verified Paid
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 600 }}>
+                              Verified Paid
+                            </span>
+                            <button
+                              className="btn-secondary"
+                              style={{ padding: '3px 8px', fontSize: '0.725rem', color: '#f59e0b', borderColor: '#f59e0b' }}
+                              onClick={() => onUpdateStatus(b.bookingId, 'Pending', 'Pay at Service')}
+                              disabled={isUpdating}
+                              title="Revert status to UNPAID if marked PAID mistakenly"
+                            >
+                              {isUpdating ? 'Updating...' : 'Mark UNPAID'}
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
