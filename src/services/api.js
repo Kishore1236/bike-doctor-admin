@@ -357,10 +357,15 @@ export async function updateBookingStatus({ token, email, bookingId, rowIndex, n
         if (v !== undefined && v !== null) params.append(k, String(v));
       });
       const fullUrl = `${sUrl}?${params.toString()}`;
+
+      // Dispatch GET
+      fetch(fullUrl, { mode: 'no-cors' }).catch(() => {});
+
+      // Dispatch POST
       await fetch(fullUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        redirect: 'follow',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(payload),
       });
     } catch (e) {}
