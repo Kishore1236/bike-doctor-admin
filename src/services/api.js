@@ -261,16 +261,56 @@ export async function updateBookingStatus({ token, email, bookingId, paymentStat
 
   // Direct Google Apps Script dispatch fallback
   const bookingScriptUrl = 'https://script.google.com/macros/s/AKfycbz-7FfKmE6FgZGxs75wMK-QuFuP97U915UAy9Ukeo5JxlgqwYoevb25RQKHFFZkunjw/exec';
-  await fetch(bookingScriptUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      bookingId,
-      paymentStatus: paymentStatus ? String(paymentStatus).toUpperCase() : 'PAID',
-      'Payment Status': paymentStatus ? String(paymentStatus).toUpperCase() : 'PAID',
-      paymentMethod: paymentMethod || 'Pay Online (Admin Updated)',
-    }),
-  });
+  const customerScriptUrl = 'https://script.google.com/macros/s/AKfycbxyCbvsvoQxXSpXjiJykrfWRyPy_fXSi4Ulr-zx7szw-R-VLLf8yY0HwVyHaLmXIHd8yw/exec';
+
+  const payload = {
+    bookingId,
+    paymentStatus: paymentStatus ? String(paymentStatus).toUpperCase() : 'PAID',
+    'Payment Status': paymentStatus ? String(paymentStatus).toUpperCase() : 'PAID',
+    paymentMethod: paymentMethod || 'Pay Online (Admin Updated)',
+    'Payment Method': paymentMethod || 'Pay Online (Admin Updated)',
+    action: 'UPDATE_STATUS',
+  };
+
+  for (const sUrl of [bookingScriptUrl, customerScriptUrl]) {
+    try {
+      const params = new URLSearchParams();
+      Object.entries(payload).forEach(([k, v]) => params.append(k, String(v)));
+      const fullUrl = `${sUrl}?${params.toString()}`;
+      await fetch(fullUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        redirect: 'follow',
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {}
+  }
+
+  // Update local storage history keys for immediate cross-tab consistency
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes('bikeDoctor_history')) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            let changed = false;
+            const updated = list.map(item => {
+              if (item && (item.bookingId === bookingId || item.id === bookingId)) {
+                changed = true;
+                return { ...item, paymentStatus: payload.paymentStatus, paymentMethod: payload.paymentMethod };
+              }
+              return item;
+            });
+            if (changed) {
+              localStorage.setItem(key, JSON.stringify(updated));
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {}
 
   return { success: true, message: `Booking ${bookingId} status updated successfully.` };
 }
