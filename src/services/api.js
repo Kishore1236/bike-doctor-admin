@@ -82,7 +82,11 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
     const receiverName = getVal(7) || 'Not provided';
     const timeSlot = getVal(8) || '09:00 AM - 11:00 AM';
     const bikeModel = getVal(9) || 'Bike Service';
-    const planName = getVal(10) || 'Premium Care';
+    let rawPlan = getVal(10);
+    if (!rawPlan || rawPlan.match(/\b(AM|PM)\b/i) || rawPlan.match(/\d{1,2}:\d{2}/)) {
+      rawPlan = 'Premium Care';
+    }
+    const planName = rawPlan;
     const bookingId = getVal(11) || `BK_${index + 1}`;
     const rawMethod = getVal(12) || 'Pay at Service';
     const rawStatus = getVal(13);
@@ -101,19 +105,38 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
     const calculatedPaymentStatus = finalStatus;
     const calculatedPaymentMethod = finalMethod;
 
-    // Extract exact numerical price from planName (e.g., "Premium Care - ₹299" -> 299)
-    let numAmount = 299;
+    // Calculate pickup location fee (Home: ₹20, Office: ₹35, Theatre: ₹50)
+    const pTypeStr = (String(pickupType) + ' ' + String(rawLocation)).toLowerCase();
+    let pickupFee = 20; // default home pickup: ₹20
+    if (pTypeStr.includes('theatre') || pTypeStr.includes('15 km') || pTypeStr.includes('50')) {
+      pickupFee = 50;
+    } else if (pTypeStr.includes('office') || pTypeStr.includes('10 km') || pTypeStr.includes('35')) {
+      pickupFee = 35;
+    } else if (pTypeStr.includes('home') || pTypeStr.includes('5 km') || pTypeStr.includes('20')) {
+      pickupFee = 20;
+    }
+
+    // Determine base plan price from planName (e.g., "Premium Care" -> 299)
+    let basePlanPrice = 299;
     const priceMatch = planName.match(/₹\s*(\d+)/) || planName.match(/(\d+)/);
     if (priceMatch && priceMatch[1]) {
       const parsed = parseInt(priceMatch[1], 10);
       if (parsed >= 50 && parsed <= 10000) {
-        numAmount = parsed;
+        basePlanPrice = parsed;
       }
     } else {
       const lower = planName.toLowerCase();
-      if (lower.includes('basic')) numAmount = 199;
-      else if (lower.includes('premium')) numAmount = 299;
-      else if (lower.includes('care')) numAmount = 519;
+      if (lower.includes('basic')) basePlanPrice = 199;
+      else if (lower.includes('premium')) basePlanPrice = 299;
+      else if (lower.includes('monthly') || lower.includes('subscription')) basePlanPrice = 599;
+      else if (lower.includes('care')) basePlanPrice = 519;
+    }
+
+    // Total Amount = Base Plan Price + Pickup Location Fee
+    let numAmount = basePlanPrice;
+    const knownBasePrices = [199, 299, 499, 519, 599];
+    if (knownBasePrices.includes(basePlanPrice)) {
+      numAmount = basePlanPrice + pickupFee;
     }
 
     const formattedAmount = `₹${numAmount}`;
