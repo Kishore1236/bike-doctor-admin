@@ -116,7 +116,8 @@ export default function App() {
             <GoogleLogin
               onSuccess={loginSuccess}
               onError={() => alert('Google Sign-In failed. Please try again.')}
-              useOneTap
+              useOneTap={false}
+              prompt="select_account"
               theme="filled_black"
               shape="pill"
               text="continue_with"
