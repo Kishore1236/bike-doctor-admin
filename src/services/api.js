@@ -1,4 +1,5 @@
-const PRIMARY_API = import.meta.env.VITE_API_URL || 'https://bike-doctor-service.vercel.app';
+const PRIMARY_API = import.meta.env.VITE_API_URL || 'https://bike-doctor-backend-vert.vercel.app';
+const SECONDARY_API = 'https://bike-doctor-service.vercel.app';
 const LOCAL_API = 'http://localhost:5000';
 const GOOGLE_SHEET_ID = '1ct2jXUykSUX2XpU3vFVTZmDXZTHCliqV89ea92o5wFM';
 
@@ -309,8 +310,9 @@ export async function updateBookingStatus({ token, email, bookingId, rowIndex, n
   }
 
   const targetUrls = [
-    `${PRIMARY_API}/api/admin/update-status`,
     `${LOCAL_API}/api/admin/update-status`,
+    `${PRIMARY_API}/api/admin/update-status`,
+    `${SECONDARY_API}/api/admin/update-status`,
   ];
 
   for (const url of targetUrls) {
