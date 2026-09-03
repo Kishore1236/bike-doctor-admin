@@ -318,11 +318,11 @@ export async function updateBookingStatus({ token, email, bookingId, rowIndex, n
       const res = await fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ email, bookingId, paymentStatus, paymentMethod }),
+        body: JSON.stringify({ email, bookingId, rowIndex, name, paymentStatus: newStatus, paymentMethod: newMethod }),
       });
       if (res.ok) {
         const data = await res.json();
-        if (data && data.success) return data;
+        if (data && data.success) break;
       }
     } catch (err) {
       console.warn(`Update notice for ${url}:`, err.message);
@@ -335,8 +335,14 @@ export async function updateBookingStatus({ token, email, bookingId, rowIndex, n
 
   const payload = {
     bookingId,
+    rowIndex: rowIndex || '',
+    row: rowIndex || '',
+    name: name || '',
+    email: email || '',
     paymentStatus: newStatus,
     'Payment Status': newStatus,
+    status: newStatus,
+    'Status': newStatus,
     paymentMethod: newMethod,
     'Payment Method': newMethod,
     action: 'UPDATE_STATUS',
@@ -345,7 +351,9 @@ export async function updateBookingStatus({ token, email, bookingId, rowIndex, n
   for (const sUrl of [bookingScriptUrl, customerScriptUrl]) {
     try {
       const params = new URLSearchParams();
-      Object.entries(payload).forEach(([k, v]) => params.append(k, String(v)));
+      Object.entries(payload).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) params.append(k, String(v));
+      });
       const fullUrl = `${sUrl}?${params.toString()}`;
       await fetch(fullUrl, {
         method: 'POST',
@@ -356,7 +364,7 @@ export async function updateBookingStatus({ token, email, bookingId, rowIndex, n
     } catch (e) {}
   }
 
-  // Update local storage history keys for immediate cross-tab consistency
+  // Update local storage history keys across browser storage for immediate consistency
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -367,9 +375,12 @@ export async function updateBookingStatus({ token, email, bookingId, rowIndex, n
           if (Array.isArray(list)) {
             let changed = false;
             const updated = list.map(item => {
-              if (item && (item.bookingId === bookingId || item.id === bookingId)) {
+              const matchesId = item && (item.bookingId === bookingId || item.id === bookingId);
+              const matchesRow = item && rowIndex && item.rowIndex === rowIndex;
+              const matchesName = item && name && item.name && String(item.name).toLowerCase() === String(name).toLowerCase();
+              if (matchesId || matchesRow || matchesName) {
                 changed = true;
-                return { ...item, paymentStatus: payload.paymentStatus, paymentMethod: payload.paymentMethod };
+                return { ...item, paymentStatus: newStatus, paymentMethod: newMethod };
               }
               return item;
             });
