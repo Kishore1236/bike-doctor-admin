@@ -35,9 +35,9 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
   const jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
   const parsed = JSON.parse(jsonStr);
   const rows = parsed.table?.rows || [];
-
-  const todayStr = new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
   const allBookings = [];
+  const seenKeys = new Set();
+  const todayStr = new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
 
   let paidCount = 0;
   let pendingCount = 0;
@@ -65,6 +65,25 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
     ) {
       return;
     }
+
+    // Incomplete fragment row guard: must have at least mobile OR location OR bikeModel OR explicit bookingId
+    const mobileVal = getVal(4);
+    const locVal = getVal(3);
+    const bikeVal = getVal(9);
+    const idVal = getVal(11);
+    if (!mobileVal && !locVal && !bikeVal && !idVal) {
+      return; // Skip blank fragment row
+    }
+
+    // Deduplication check: prevent duplicate submissions from displaying multiple times
+    const customId = idVal && !idVal.startsWith('BK_') ? idVal.toLowerCase() : '';
+    const fingerprint = `${rawName.toLowerCase()}_${mobileVal.replace(/\D/g, '')}_${bikeVal.toLowerCase()}_${getVal(8).toLowerCase()}`;
+    const dedupKey = customId || (fingerprint.length > 6 ? fingerprint : '');
+
+    if (dedupKey && seenKeys.has(dedupKey)) {
+      return; // Skip duplicate booking
+    }
+    if (dedupKey) seenKeys.add(dedupKey);
 
     let formattedTimestamp = rawTimestamp;
     let dateObj = null;
