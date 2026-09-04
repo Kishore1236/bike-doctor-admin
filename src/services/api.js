@@ -378,20 +378,10 @@ export async function updateBookingStatus({ token, email, bookingId, rowIndex, n
 
   for (const sUrl of [bookingScriptUrl, customerScriptUrl]) {
     try {
-      const params = new URLSearchParams();
-      Object.entries(payload).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) params.append(k, String(v));
-      });
-      const fullUrl = `${sUrl}?${params.toString()}`;
-
-      // Dispatch GET
-      fetch(fullUrl, { mode: 'no-cors' }).catch(() => {});
-
-      // Dispatch POST
-      await fetch(fullUrl, {
+      await fetch(sUrl, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       });
     } catch (e) {}
