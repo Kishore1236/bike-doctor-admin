@@ -20,12 +20,6 @@ function saveAdminStatusOverride(bookingId, rowIndex, name, paymentStatus, payme
       current[bookingId] = payload;
       current[String(bookingId).toLowerCase()] = payload;
     }
-    if (rowIndex) {
-      current[`row_${rowIndex}`] = payload;
-    }
-    if (name) {
-      current[`name_${String(name).toLowerCase()}`] = payload;
-    }
     localStorage.setItem('admin_status_overrides', JSON.stringify(current));
   } catch (e) {}
 }
@@ -106,10 +100,10 @@ async function fetchFromGoogleSheetsDirect({ search, paymentStatus, paymentMetho
     const rawStatus = getVal(13);
     const email = getVal(14) || 'Not provided';
 
-    const override = overrides[bookingId] || overrides[String(bookingId).toLowerCase()] || overrides[`row_${rowIndex}`] || overrides[`name_${String(name).toLowerCase()}`];
+    const override = bookingId ? (overrides[bookingId] || overrides[String(bookingId).toLowerCase()]) : null;
 
-    let finalStatus = (rawStatus.toUpperCase() === 'PAID' || rawStatus.toUpperCase() === 'PAID ONLINE') ? 'PAID' : 'Pending';
-    let finalMethod = rawMethod;
+    let finalStatus = (rawStatus && (rawStatus.toUpperCase() === 'PAID' || rawStatus.toUpperCase() === 'PAID ONLINE')) ? 'PAID' : 'Pending';
+    let finalMethod = rawMethod || 'Pay at Service';
 
     if (override) {
       finalStatus = override.paymentStatus || finalStatus;
